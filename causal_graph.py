@@ -193,13 +193,60 @@ class CausalGraph:
             mediators.update(path[1:-1])
         
         return mediators
+
+
+    def _remove_cycles_with_edge_weights(self, X: pd.DataFrame) -> None:
+        """
+        Remove cycles from the graph by removing edges with lowest statistical support.
+        
+        Args:
+            X: Feature data used to compute edge strengths
+        """
+        if self.is_valid_dag():
+            return
+        
+        # Compute correlation matrix for edge weights
+        corr_matrix = X.corr().abs()
+        
+        # Assign weights to edges based on correlation strength
+        for u, v in self.graph.edges():
+            if u in X.columns and v in X.columns:
+                self.graph[u][v]['weight'] = corr_matrix.loc[u, v]
+            else:
+                self.graph[u][v]['weight'] = 0.1  # Default weight for edges not in data
+        
+        # Identify and break cycles by removing weakest edges
+        while not self.is_valid_dag():
+            try:
+                # Find a cycle
+                cycle = nx.find_cycle(self.graph, orientation="original")
+                
+                # Find the edge with minimum weight
+                min_weight = float('inf')
+                min_edge = None
+                
+                for edge in cycle:
+                    weight = self.graph[edge[0]][edge[1]].get('weight', 0)
+                    if weight < min_weight:
+                        min_weight = weight
+                        min_edge = edge
+                
+                # Remove the weakest edge
+                if min_edge:
+                    self.graph.remove_edge(min_edge[0], min_edge[1])
+                else:
+                    # Fallback: remove the last edge if weights are not available
+                    self.graph.remove_edge(cycle[-1][0], cycle[-1][1])
+                    
+            except nx.NetworkXNoCycle:
+                break
     
     def discover_from_data(self, 
-                          X: pd.DataFrame, 
-                          s_idx: int,
-                          correlation_threshold: float = 0.05,
-                          partial_correlation_threshold: float = 0.03,
-                          outcome_idx: Optional[int] = None) -> None:
+                        X: pd.DataFrame, 
+                        s_idx: int,
+                        correlation_threshold: float = 0.05,
+                        partial_correlation_threshold: float = 0.03,
+                        outcome_idx: Optional[int] = None) -> None:
         """
         Discover causal structure from data using correlation analysis and domain knowledge.
         
@@ -241,6 +288,7 @@ class CausalGraph:
             
             if corr > correlation_threshold:
                 # Use partial correlation to determine direction
+                # This is a simplification; real causal discovery would use more sophisticated methods
                 
                 # Partial correlation controlling for protected attribute
                 partial_corr_i_s = abs(corr_matrix.iloc[i, s_idx])
@@ -262,15 +310,8 @@ class CausalGraph:
             for edge in list(self.graph.out_edges(outcome)):
                 self.graph.remove_edge(edge[0], edge[1])
         
-        # Make sure the graph is acyclic by removing edges that create cycles
-        while not self.is_valid_dag():
-            # Find a cycle
-            try:
-                cycle = nx.find_cycle(self.graph, orientation="original")
-                # Remove the last edge in the cycle
-                self.graph.remove_edge(cycle[-1][0], cycle[-1][1])
-            except nx.NetworkXNoCycle:
-                break
+        # Make sure the graph is acyclic using improved cycle removal
+        self._remove_cycles_with_edge_weights(X)
         
         # Categorize features based on their relationship to protected attribute
         self._categorize_features()
@@ -526,10 +567,16 @@ class CausalGraph:
             model_type = models.get(node, 'linear')
             
             # Fit model based on data type and specified model type
-            if model_type == 'random_forest':
-                model = RandomForestRegressor(n_estimators=100, random_state=42)
-            else:
-                model = LinearRegression()
+            if y.nunique() <= 5:  # Categorical/binary feature
+                if model_type == 'random_forest':
+                    model = RandomForestClassifier(n_estimators=100, random_state=42)
+                else:
+                    model = LogisticRegression(random_state=42)
+            else:  # Continuous feature
+                if model_type == 'random_forest':
+                    model = RandomForestRegressor(n_estimators=100, random_state=42)
+                else:
+                    model = LinearRegression()
             
             # Fit model
             model.fit(X_parents, y)
