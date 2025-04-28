@@ -286,10 +286,7 @@ class CausalGraph:
             
             corr = abs(corr_matrix.iloc[i, j])
             
-            if corr > correlation_threshold:
-                # Use partial correlation to determine direction
-                # This is a simplification; real causal discovery would use more sophisticated methods
-                
+            if corr > correlation_threshold:                
                 # Partial correlation controlling for protected attribute
                 partial_corr_i_s = abs(corr_matrix.iloc[i, s_idx])
                 partial_corr_j_s = abs(corr_matrix.iloc[j, s_idx])
@@ -310,11 +307,11 @@ class CausalGraph:
             for edge in list(self.graph.out_edges(outcome)):
                 self.graph.remove_edge(edge[0], edge[1])
         
-        # Make sure the graph is acyclic using improved cycle removal
+        # Make sure the graph is acyclic using cycle removal
         self._remove_cycles_with_edge_weights(X)
         
         # Categorize features based on their relationship to protected attribute
-        self._categorize_features()
+        self._categorize_features(outcome=outcome)
     
     def discover_from_feature_categories(self,
                                        feature_names: List[str],
@@ -377,7 +374,7 @@ class CausalGraph:
         self.mediator_features = set(mediator_features)
         self.neutral_features = set(neutral_features)
     
-    def _categorize_features(self) -> None:
+    def _categorize_features(self, outcome: Optional[str] = None) -> None:
         """
         Categorize features based on their relationship to the protected attribute.
         """
@@ -388,16 +385,17 @@ class CausalGraph:
         self.neutral_features = set()
         
         all_features = set(self.graph.nodes())
-        outcome_candidates = {node for node in all_features if len(list(self.graph.successors(node))) == 0}
         
-        # Filter out the most likely outcome node if multiple candidates
-        outcome = None
-        if len(outcome_candidates) > 1:
-            # The node with the most incoming edges is likely the outcome
-            outcome = max(outcome_candidates, key=lambda node: len(list(self.graph.predecessors(node))))
-            outcome_candidates = {outcome}
-        elif len(outcome_candidates) == 1:
-            outcome = next(iter(outcome_candidates))
+        # Only try to infer outcome if not explicitly provided
+        if outcome is None:
+            outcome_candidates = {node for node in all_features if len(list(self.graph.successors(node))) == 0}
+            
+            # Filter out the most likely outcome node if multiple candidates
+            if len(outcome_candidates) > 1:
+                # The node with the most incoming edges is likely the outcome
+                outcome = max(outcome_candidates, key=lambda node: len(list(self.graph.predecessors(node))))
+            elif len(outcome_candidates) == 1:
+                outcome = next(iter(outcome_candidates))
         
         for feature in all_features:
             if feature == self.protected_attribute or (outcome is not None and feature == outcome):
@@ -418,109 +416,6 @@ class CausalGraph:
             # Neutral features: no direct connection to protected attribute
             else:
                 self.neutral_features.add(feature)
-    
-    def visualize(self, 
-                 figsize: Tuple[int, int] = (12, 8), 
-                 node_size: int = 1000,
-                 node_colors: Dict[str, str] = None,
-                 save_path: Optional[str] = None) -> plt.Figure:
-        """
-        Visualize the causal graph.
-        
-        Args:
-            figsize: Size of the figure
-            node_size: Size of nodes in the graph
-            node_colors: Dictionary mapping categories to colors
-            save_path: If provided, save the visualization to this path
-            
-        Returns:
-            Matplotlib figure
-        """
-        fig, ax = plt.subplots(figsize=figsize)
-        
-        # Default node colors by category
-        if node_colors is None:
-            node_colors = {
-                'protected': 'orangered',
-                'direct': 'gold',
-                'proxy': 'lightcoral',
-                'mediator': 'lightseagreen',
-                'neutral': 'lightskyblue',
-                'outcome': 'mediumpurple',
-                'other': 'lightgray'
-            }
-        
-        # Determine node color based on its category
-        node_color_map = {}
-        for node in self.graph.nodes():
-            if node == self.protected_attribute:
-                node_color_map[node] = node_colors['protected']
-            elif node in self.direct_features:
-                node_color_map[node] = node_colors['direct']
-            elif node in self.proxy_features:
-                node_color_map[node] = node_colors['proxy']
-            elif node in self.mediator_features:
-                node_color_map[node] = node_colors['mediator']
-            elif node in self.neutral_features:
-                node_color_map[node] = node_colors['neutral']
-            else:
-                # Assume any node with no outgoing edges is an outcome
-                if len(list(self.graph.successors(node))) == 0:
-                    node_color_map[node] = node_colors['outcome']
-                else:
-                    node_color_map[node] = node_colors['other']
-        
-        # Prepare layout
-        layout = nx.spring_layout(self.graph, k=0.5, iterations=50, seed=42)
-        
-        # Draw nodes
-        nx.draw_networkx_nodes(
-            self.graph, 
-            layout, 
-            node_color=[node_color_map.get(node, 'gray') for node in self.graph.nodes()],
-            node_size=node_size,
-            alpha=0.8,
-            ax=ax
-        )
-        
-        # Draw edges
-        nx.draw_networkx_edges(
-            self.graph, 
-            layout,
-            arrowstyle='-|>',
-            arrowsize=20,
-            alpha=0.6,
-            connectionstyle='arc3,rad=0.1',
-            ax=ax
-        )
-        
-        # Draw labels
-        nx.draw_networkx_labels(
-            self.graph, 
-            layout, 
-            font_size=10,
-            font_weight='bold',
-            ax=ax
-        )
-        
-        # Add legend
-        legend_elements = [
-            plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=color, markersize=10, label=cat)
-            for cat, color in node_colors.items()
-            if any(value == color for value in node_color_map.values())
-        ]
-        ax.legend(handles=legend_elements, loc='upper right')
-        
-        # Set title and remove axis
-        plt.title('Causal Graph Visualization', fontsize=16)
-        plt.axis('off')
-        
-        # Save figure if path provided
-        if save_path:
-            plt.savefig(save_path, dpi=300, bbox_inches='tight')
-            plt.close()
-        
-        return fig
     
     def get_structural_equations(self, 
                                 X: pd.DataFrame,
