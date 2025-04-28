@@ -227,8 +227,6 @@ class TSCFM(BaseEstimator, ClassifierMixin):
         top_features = [f for f in sorted_features.index 
                       if f not in [protected_attr, 'target']][:5]
         
-        self._log(f"Enhancing causal graph with direct effects: {top_features}")
-        
         # Add edges from protected attribute to top features
         for feature in top_features:
             if not self.causal_graph.graph.has_edge(protected_attr, feature):
@@ -240,8 +238,6 @@ class TSCFM(BaseEstimator, ClassifierMixin):
                     self.causal_graph.neutral_features.remove(feature)
                 if feature in self.causal_graph.proxy_features:
                     self.causal_graph.proxy_features.remove(feature)
-                
-                self._log(f"Added causal edge: {protected_attr} -> {feature}")
     
     def _setup_counterfactual_generator(self):
         """
