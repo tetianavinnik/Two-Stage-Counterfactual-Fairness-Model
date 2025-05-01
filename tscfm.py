@@ -17,20 +17,12 @@ from sklearn.cluster import KMeans
 import time
 from scipy.optimize import minimize
 
-# Set up logging
 logger = logging.getLogger(__name__)
 
 
 class TSCFM(BaseEstimator, ClassifierMixin):
     """
     Two-Stage Counterfactual Fairness Model for fair credit scoring.
-    
-    Key improvements over standard TSCFM:
-    1. No dependency on true labels during prediction time
-    2. Calibrated fairness adjustments that respect parameter settings
-    3. Better fairness-accuracy trade-off through stratified adjustments
-    4.  verification of fairness improvements
-    5. Specialized optimization for different fairness metrics
     """
     
     def __init__(self, 
@@ -61,8 +53,6 @@ class TSCFM(BaseEstimator, ClassifierMixin):
             fairness_threshold: Maximum allowed value for the fairness metric
             amplification_factor: Factor to amplify counterfactual changes
             random_state: Random seed for reproducibility
-            fairness_weight: Weight for the fairness term in optimization (0.0-1.0)
-            prediction_threshold: Threshold for converting probabilities to binary predictions
             verbose: Whether to print detailed debug information
         """
         self.base_model_type = base_model_type
@@ -87,8 +77,7 @@ class TSCFM(BaseEstimator, ClassifierMixin):
         self.fairness_statistics = {}
         self.baseline_metrics = {}
         self.group_statistics = {}
-        
-        # Set random seed for reproducibility
+
         np.random.seed(self.random_state)
         
     def _log(self, message: str, level: str = "info") -> None:
@@ -170,8 +159,7 @@ class TSCFM(BaseEstimator, ClassifierMixin):
         
         # Step 5: Compute fairness reference statistics for later use
         self._compute_fairness_statistics(X, y, s, baseline_probs)
-        
-        # Log results
+
         self._log(f"Base model accuracy: {self.baseline_metrics['accuracy']:.4f}")
         for metric_name, metric_value in self.fairness_statistics.items():
             self._log(f"Base model {metric_name}: {metric_value:.4f}")
@@ -209,8 +197,7 @@ class TSCFM(BaseEstimator, ClassifierMixin):
             outcome_idx=df.columns.get_loc('target'),
             correlation_threshold=0.05
         )
-        
-        # Enhance causal graph with more direct effects if needed
+
         self._enhance_causal_graph(df)
     
     def _enhance_causal_graph(self, df):
@@ -614,8 +601,7 @@ class TSCFM(BaseEstimator, ClassifierMixin):
         # Calculate target rates (averages)
         target_tpr = (tpr_0 + tpr_1) / 2
         target_fpr = (fpr_0 + fpr_1) / 2
-        
-        # Create result array
+
         result = baseline_probs.copy()
         
         # Function to identify likely positive/negative examples and adjust them
@@ -772,8 +758,7 @@ class TSCFM(BaseEstimator, ClassifierMixin):
             },
             'improvement': fairness_improvement
         }
-        
-        # Print summary
+
         logger.info("=== Evaluation Results ===")
         logger.info(f"Baseline Accuracy: {baseline_performance['accuracy']:.4f}")
         logger.info(f"Fair Model Accuracy: {fair_performance['accuracy']:.4f}")
@@ -791,8 +776,7 @@ class TSCFM(BaseEstimator, ClassifierMixin):
                 import visualization as viz
                 import matplotlib.pyplot as plt
                 import os
-                
-                # Create output directory if it doesn't exist
+
                 os.makedirs(output_dir, exist_ok=True)
                 
                 # Plot fairness metrics comparison
@@ -807,7 +791,6 @@ class TSCFM(BaseEstimator, ClassifierMixin):
                 if probs_fig is not None:
                     plt.close(probs_fig)
                 
-                # Generate and plot counterfactuals if possible
                 try:
                     X_cf = self.counterfactual_generator.transform(X, s, self.feature_names)
                     
