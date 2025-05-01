@@ -1,5 +1,3 @@
-# run_experiments.py - Main experiment runner for TSCFM
-
 import os
 import argparse
 import pandas as pd
@@ -30,7 +28,6 @@ from utils import (
     save_experiment_results, make_experiment_id, flatten_dict
 )
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -133,8 +130,7 @@ def run_single_experiment(config, output_dir=None):
         Dictionary with experiment results
     """
     start_time = time.time()
-    
-    # Set global random seed to ensure reproducibility
+
     np.random.seed(42)
     import random
     random.seed(42)
@@ -167,19 +163,6 @@ def run_single_experiment(config, output_dir=None):
         dataset_name = config['dataset']
         logger.info(f"Loading dataset: {dataset_name}")
         
-        # For German dataset, use exact same loading procedure as in main.py
-        # if dataset_name == 'german':
-        #     try:
-        #         # Try to import from load_german first
-        #         from load_german import load_german
-        #         X, y, s = load_german(mode='label_encoding')
-        #         # Create feature names
-        #         feature_names = [f'feature_{i}' for i in range(X.shape[1])]
-        #     except ImportError:
-        #         logger.error("Could not import load_german, please ensure it's in the path")
-        #         raise
-        # else:
-            # Handle other datasets
         dataset_path = DATASET_PATHS.get(dataset_name)
         if not dataset_path:
             raise ValueError(f"No path specified for dataset: {dataset_name}")
@@ -204,7 +187,7 @@ def run_single_experiment(config, output_dir=None):
         logger.info(f"Class distribution: {np.bincount(y.astype(int))}")
         logger.info(f"Protected attribute distribution: {np.bincount(s.astype(int))}")
         
-        # Create train/test split exactly as in main.py
+        # Create train/test split
         from sklearn.model_selection import train_test_split
         X_train, X_test, y_train, y_test, s_train, s_test = train_test_split(
             X, y, s, test_size=0.3, random_state=42, stratify=y
@@ -217,8 +200,7 @@ def run_single_experiment(config, output_dir=None):
             test_size=0.3,
             random_state=42
         )
-        
-        # Manually set the train/test split to match exactly
+
         data_processor.X_train = X_train
         data_processor.X_test = X_test
         data_processor.y_train = y_train
@@ -229,7 +211,7 @@ def run_single_experiment(config, output_dir=None):
         data_processor.data_loaded = True
         
         # Analyze feature correlations with consistent threshold
-        correlation_threshold = 0.2  # Match main.py
+        correlation_threshold = 0.2
         feature_categories = data_processor.analyze_feature_correlations(threshold=correlation_threshold)
         
         logger.info(f"Feature categories identified:")
@@ -238,14 +220,13 @@ def run_single_experiment(config, output_dir=None):
         logger.info(f"  Mediator features: {len(feature_categories['mediator'])}")
         logger.info(f"  Neutral features: {len(feature_categories['neutral'])}")
         
-        # Create causal graph exactly as in main.py
+        # Create causal graph
         logger.info("Creating causal graph")
         from causal_graph import CausalGraph
         
-        protected_attr = 'protected'  # Same as in main.py
+        protected_attr = 'protected'
         causal_graph = CausalGraph(protected_attribute=protected_attr)
-        
-        # Create DataFrame for causal discovery
+
         df = pd.DataFrame(X_train, columns=feature_names)
         df[protected_attr] = s_train
         df['target'] = y_train
@@ -257,15 +238,7 @@ def run_single_experiment(config, output_dir=None):
             df, s_idx=s_idx, outcome_idx=y_idx,
             correlation_threshold=correlation_threshold
         )
-        
-        # Visualize causal graph
-        causal_graph_path = os.path.join(dirs['causal_graphs'], "causal_graph.png")
-        try:
-            causal_fig = causal_graph.visualize(figsize=(14, 10))
-            # causal_fig.savefig(causal_graph_path, dpi=300, bbox_inches='tight')
-            plt.close(causal_fig)
-        except Exception as e:
-            logger.error(f"Error visualizing causal graph: {e}")
+
         
         # Get base model configuration based on dataset
         if dataset_name == 'german':
@@ -316,7 +289,6 @@ def run_single_experiment(config, output_dir=None):
         fairness_constraint = config.get('fairness_constraint', default_fairness_constraint)
         
         # Get TSCFM default values for other parameters
-        # These must match the defaults in the TSCFM class constructor
         default_adjustment_strength = 0.7
         default_amplification_factor = 2.0
         
@@ -333,7 +305,7 @@ def run_single_experiment(config, output_dir=None):
         logger.info(f"  fairness_constraint: {fairness_constraint}")
         logger.info(f"  amplification_factor: {amplification_factor}")
         
-        # Create TSCFM model with identical parameters to main.py
+        # Create TSCFM model
         from tscfm import TSCFM
         tscfm_model = TSCFM(
             base_model_type=base_model_type,
@@ -352,11 +324,7 @@ def run_single_experiment(config, output_dir=None):
             feature_names=feature_names,
             causal_graph=causal_graph
         )
-        
-        # Save model
-        # model_path = os.path.join(dirs['models'], "tscfm_model")
-        # tscfm_model.save(model_path)
-        # logger.info(f"Model saved to {model_path}")
+
         
         # Evaluate model
         logger.info("Evaluating model")
@@ -377,35 +345,9 @@ def run_single_experiment(config, output_dir=None):
         try:
             # Generate counterfactuals for test set
             X_cf = tscfm_model.counterfactual_generator.transform(X_test, s_test, feature_names)
-            
-            # Import visualization modules
+
             import visualization as viz
             from fairness_metrics import plot_roc_curves
-            
-            # Plot counterfactual distributions
-            cf_dist_path = os.path.join(dirs['plots'], "counterfactual_distributions.png")
-            # cf_dist_fig = viz.plot_counterfactual_distributions(
-            #     X_test, X_cf, s_test, feature_names, save_path=cf_dist_path
-            # )
-            # cf_dist_fig = None
-            # if cf_dist_fig is not None:
-            #     plt.close(cf_dist_fig)
-            
-            # Plot embedding space
-            # embedding_path = os.path.join(dirs['plots'], "embedding_space.png")
-            # embedding_fig = viz.plot_embedding_space(
-            #     X_test, X_cf, s_test, y_test, method='pca', save_path=embedding_path
-            # )
-            # if embedding_fig is not None:
-            #     plt.close(embedding_fig)
-            
-            # # Plot outcome probabilities
-            # probs_path = os.path.join(dirs['plots'], "outcome_probabilities.png")
-            # probs_fig = viz.plot_outcome_probabilities(
-            #     y_prob_original, y_prob_fair, s_test, save_path=probs_path
-            # )
-            # if probs_fig is not None:
-            #     plt.close(probs_fig)
             
             # Plot ROC curves for original and fair models
             try:
@@ -460,7 +402,6 @@ def run_single_experiment(config, output_dir=None):
             'runtime': time.time() - start_time
         }
         
-        # Save results
         save_experiment_results(results, output_dir)
         
         # Print summary
@@ -519,8 +460,7 @@ def run_experiments_grid(args):
     """
     # Get experiment grid
     full_grid = get_experiment_grid()
-    
-    # Filter grid based on command line arguments
+
     grid = []
     for config in full_grid:
         if (args.dataset is None or config['dataset'] == args.dataset) and \
@@ -529,13 +469,11 @@ def run_experiments_grid(args):
             grid.append(config)
     
     logger.info(f"Running grid search with {len(grid)} configurations")
-    
-    # Create output directory
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_dir = os.path.join(args.output_dir, f"grid_search_{timestamp}")
     os.makedirs(output_dir, exist_ok=True)
-    
-    # Save grid configuration
+
     grid_config = {
         'timestamp': timestamp,
         'num_experiments': len(grid),
@@ -544,8 +482,7 @@ def run_experiments_grid(args):
     }
     with open(os.path.join(output_dir, 'grid_config.json'), 'w') as f:
         json.dump(convert_numpy_types(grid_config), f, indent=2)
-    
-    # Run experiments - check if parallel or sequential
+
     if args.parallel:
         from joblib import Parallel, delayed
         
@@ -565,25 +502,21 @@ def run_experiments_grid(args):
     for result in results:
         if 'experiment_id' in result and 'error' not in result:
             all_results[result['experiment_id']] = result
-    
-    # Save combined results
+
     combined_path = os.path.join(output_dir, 'all_results.json')
     with open(combined_path, 'w') as f:
         converted_results = convert_numpy_types(all_results)
         json.dump(converted_results, f, indent=2)
-    
-    # Also save as CSV for easier analysis
+
     try:
         # Flatten nested dictionaries
         flat_results = []
         for exp_id, result in all_results.items():
             flat_result = flatten_dict(result)
             flat_results.append(flat_result)
-        
-        # Convert to DataFrame
+
         results_df = pd.DataFrame(flat_results)
-        
-        # Save as CSV
+
         csv_path = os.path.join(output_dir, 'all_results.csv')
         results_df.to_csv(csv_path, index=False)
         logger.info(f"Combined results saved to {csv_path}")
@@ -646,69 +579,6 @@ def main():
         default_config.update(BASE_TSCFM_CONFIG)
         
         return run_single_experiment(default_config)
-
-
-# import sys
-
-# def main():
-#     """Main function."""
-
-#     # Simulate CLI arguments for debugging or scripted execution
-#     sys.argv = [
-#         "run_tscfm_experiments.py",  # dummy script name
-#         # "--mode", "all",
-#         "--dataset", "german",
-#         "--method", "structural_equation",
-#         "--grid_search"
-#     ]
-
-#     args = parse_args()
-#     logger.info("Starting TSCFM experiments")
-
-#     if args.single_experiment:
-#         # Run single experiment with default parameters
-#         default_config = {
-#             'dataset': args.dataset or 'german',
-#             'counterfactual_method': args.method or 'structural_equation',
-#             'adjustment_strength': 0.7,
-#             'amplification_factor': 2.0
-#         }
-#         default_config.update(BASE_TSCFM_CONFIG)
-
-#         logger.info("Running single experiment with default parameters")
-#         result = run_single_experiment(default_config)
-
-#         # Print summary
-#         if 'error' not in result:
-#             logger.info("\n=== Experiment Results ===")
-#             logger.info(f"Dataset: {result['dataset']}")
-#             logger.info(f"Method: {result['counterfactual_method']}")
-#             logger.info(f"Baseline Accuracy: {result['baseline_performance']['accuracy']:.4f}")
-#             logger.info(f"Fair Model Accuracy: {result['fair_performance']['accuracy']:.4f}")
-#             logger.info(f"Baseline SP: {result['baseline_fairness']['demographic_parity_difference']:.4f}")
-#             logger.info(f"Fair Model SP: {result['fair_fairness']['demographic_parity_difference']:.4f}")
-#             logger.info(f"SP Improvement: {result['improvement'].get('demographic_parity_difference', 0):.1f}%")
-#             logger.info("==========================")
-
-#         return result
-
-#     elif args.grid_search:
-#         return run_experiments_grid(args)
-
-#     else:
-#         logger.info("No experiment mode specified. Run with --single_experiment or --grid_search")
-#         logger.info("Using default: single experiment")
-
-#         default_config = {
-#             'dataset': args.dataset or 'german',
-#             'counterfactual_method': args.method or 'structural_equation',
-#             'adjustment_strength': 0.7,
-#             'amplification_factor': 2.0
-#         }
-#         default_config.update(BASE_TSCFM_CONFIG)
-
-#         return run_single_experiment(default_config)
-
 
 if __name__ == "__main__":
     main()
