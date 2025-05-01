@@ -293,12 +293,3 @@ class TSCFMDataProcessor:
             'y_train_male': y_train_male,
             'y_train_female': y_train_female
         }
-
-
-# Example usage (to be moved to main.py)
-if __name__ == "__main__":
-    # This is just for testing - not part of the actual implementation
-    processor = TSCFMDataProcessor('german')
-    processor.load_data()
-    processor.analyze_feature_correlations()
-    processor.visualize_correlations()
