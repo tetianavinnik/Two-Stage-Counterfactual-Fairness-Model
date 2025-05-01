@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score, balanced_accuracy_score, roc_auc_score, f1_score
 import logging
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -29,10 +28,8 @@ def setup_experiment_directory(output_dir):
     Returns:
         Dictionary with paths for different output types
     """
-    # Create main directory
     os.makedirs(output_dir, exist_ok=True)
-    
-    # Create subdirectories
+
     subdirs = {
         'results': os.path.join(output_dir, 'results'),
         'models': os.path.join(output_dir, 'models'),
@@ -92,17 +89,14 @@ def save_experiment_results(results, output_dir, filename='results.json'):
             else:
                 result[k] = convert_to_serializable(v)
         return result
-    
-    # Convert results dictionary
+
     serializable_results = convert_dict(results)
-    
-    # Save to file
+
     results_path = os.path.join(output_dir, filename)
     with open(results_path, 'w') as f:
         json.dump(serializable_results, f, indent=2)
     logger.info(f"Saved experiment results to {results_path}")
-    
-    # Also save as CSV for easier analysis
+
     if isinstance(results, dict) and not isinstance(next(iter(results.values()), None), dict):
         # If results is a flat dictionary, convert to DataFrame
         df = pd.DataFrame([results])
