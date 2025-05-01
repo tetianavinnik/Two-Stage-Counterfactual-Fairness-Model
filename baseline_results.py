@@ -30,7 +30,6 @@ def get_best_baseline_models(dataset_name, metric='Acc', fairness_metric='SP', n
     Returns:
         DataFrame with top models
     """
-    # Get baseline results
     results = get_baseline_results(dataset_name)
     
     # Sort by performance metric (descending)
@@ -215,8 +214,6 @@ def create_benchmark_summary(dataset_name=None):
         Dictionary with benchmark summaries
     """
     summary = {}
-    
-    # Determine which datasets to summarize
     datasets_to_summarize = [dataset_name] if dataset_name else DATASETS
     
     for ds in datasets_to_summarize:
