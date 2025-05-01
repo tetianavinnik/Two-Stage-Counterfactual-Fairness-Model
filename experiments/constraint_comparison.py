@@ -145,7 +145,6 @@ def create_fairness_cross_impact_heatmap(results_df: pd.DataFrame,
     corr_df = pd.DataFrame(correlation_data)
     
     # Prepare data for the heatmap
-    # We need a numeric matrix for the heatmap
     fairness_types = [name for _, name, _, _ in fairness_metrics]
     matrix_data = np.zeros((len(fairness_types), len(fairness_types)))
     p_values = np.ones((len(fairness_types), len(fairness_types)))
@@ -171,10 +170,8 @@ def create_fairness_cross_impact_heatmap(results_df: pd.DataFrame,
                     if f'{col_name}_p' in row_data.columns:
                         p_values[i, j] = row_data[f'{col_name}_p'].values[0]
     
-    # Create the correlation heatmap
     plt.figure(figsize=(12, 10))
     
-    # Use a diverging colormap (blue for positive, red for negative)
     cmap = sns.diverging_palette(230, 20, as_cmap=True)
     
     # Create the heatmap
