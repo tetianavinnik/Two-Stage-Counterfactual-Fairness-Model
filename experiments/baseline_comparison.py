@@ -804,3 +804,12 @@ def create_fairness_focused_plots_with_tscfm_only(results_df: pd.DataFrame,
         )
 
 
+# Example usage
+if __name__ == "__main__":
+    # Load results
+    results_df = load_results(r"path_to_file")
+    # Create performance summary
+    create_performance_summary(results_df, "output_directory", "card")
+
+
+
