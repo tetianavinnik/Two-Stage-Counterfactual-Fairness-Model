@@ -15,7 +15,6 @@ matplotlib.use('Agg')
 from causal_graph import CausalGraph
 import logging
 
-# Set up logging
 logger = logging.getLogger(__name__)
 
 
@@ -37,7 +36,7 @@ class CounterfactualGenerator:
             causal_graph: Causal graph representing relationships between features
             method: Method to use for generating counterfactuals
                     ('structural_equation', 'matching', or 'generative')
-            adjustment_strength: Strength of counterfactual adjustments (0.0-2.0)
+            adjustment_strength: Strength of counterfactual adjustments
             random_state: Random seed for reproducibility
             amplification_factor: Factor to amplify counterfactual changes
         """
@@ -69,17 +68,14 @@ class CounterfactualGenerator:
         Returns:
             Self for method chaining
         """
-        # Ensure consistent random state
         np.random.seed(self.random_state)
-        
-        # Create DataFrame for easier handling
+
         df = pd.DataFrame(X, columns=feature_names)
         
         # Add protected attribute
         protected_attr = self.causal_graph.protected_attribute
         df[protected_attr] = s
-        
-        # Enhance causal structure if needed (deterministically)
+
         self._enhance_causal_structure(df)
         
         # Perform method-specific fitting
@@ -98,7 +94,6 @@ class CounterfactualGenerator:
         Enhance the causal structure to create stronger counterfactual effects 
         by selecting the most influential neutral features to convert to mediators.
         """
-        # Get protected attribute
         protected_attr = self.causal_graph.protected_attribute
         
         # If no mediator features are detected, convert some neutral features to mediators
@@ -172,11 +167,9 @@ class CounterfactualGenerator:
                    
             
             model = RandomForestRegressor(n_estimators=100, random_state=self.random_state)
-            
-            # Fit model
+
             model.fit(X_parents, y_feature)
             
-            # Store model and column information
             self.structural_equations[feature] = {
                 'model': model,
                 'parents': parents
@@ -208,7 +201,7 @@ class CounterfactualGenerator:
         
         # Create separate models for each protected attribute value
         self.matching_models = {}
-        self.group_indices = {}  # Store indices for each group
+        self.group_indices = {}
         
         # Get features (excluding protected attribute)
         features = [col for col in df.columns if col != protected_attr]
@@ -275,7 +268,7 @@ class CounterfactualGenerator:
             self.feature_distributions[s_val] = {
                 feature: {
                     'mean': df.loc[indices, feature].mean(),
-                    'std': max(df.loc[indices, feature].std(), 1e-6),  # Avoid zero std
+                    'std': max(df.loc[indices, feature].std(), 1e-6),
                     'min': df.loc[indices, feature].min(),
                     'max': df.loc[indices, feature].max()
                 }
@@ -285,7 +278,7 @@ class CounterfactualGenerator:
         # Analyze differences between groups
         self.feature_diffs = {}
         for feature in features:
-            # Check if feature should be affected based on causal structure - no randomness
+            # Check if feature should be affected based on causal structure
             is_affected = (feature in self.causal_graph.direct_features or 
                            feature in self.causal_graph.mediator_features or
                            feature in self.causal_graph.proxy_features)
@@ -298,8 +291,7 @@ class CounterfactualGenerator:
                 
                 # Apply amplification consistently
                 diff = (mean_1 - mean_0) * self.amplification_factor
-                
-                # Store difference
+
                 self.feature_diffs[feature] = diff
         
         logger.info(f"Generative model fitted with {len(self.feature_diffs)} affected features")
@@ -359,13 +351,10 @@ class CounterfactualGenerator:
         Returns:
             Counterfactual feature matrix
         """
-        # Ensure consistent random state
         np.random.seed(self.random_state)
-        
-        # Create DataFrame for easier handling
+
         df = pd.DataFrame(X, columns=feature_names)
-        
-        # Add protected attribute
+
         protected_attr = self.causal_graph.protected_attribute
         df[protected_attr] = s
         
@@ -398,8 +387,7 @@ class CounterfactualGenerator:
             DataFrame with counterfactual features
         """
         logger.info("Generating counterfactuals using structural equations...")
-        
-        # Create copy of DataFrame for counterfactuals
+
         df_cf = df.copy()
         
         # Flip protected attribute
@@ -434,7 +422,7 @@ class CounterfactualGenerator:
             original = df[feature].values
             difference = new_values - original
             
-            # Apply amplified adjustment - consistently using amplification_factor
+            # Apply amplified adjustment
             new_values = original + difference * self.amplification_factor
             
             # Apply clamping between min and max if necessary
@@ -462,8 +450,7 @@ class CounterfactualGenerator:
             DataFrame with counterfactual features
         """
         logger.info("Generating counterfactuals using matching...")
-        
-        # Create copy of DataFrame for counterfactuals
+
         df_cf = df.copy()
         
         # Get features (excluding protected attribute)
@@ -480,7 +467,7 @@ class CounterfactualGenerator:
             # Get opposite group value
             opposite_group = 1 - s_val
             
-            # Skip if matching model doesn't exist for opposite group (e.g., no samples)
+            # Skip if matching model doesn't exist for opposite group
             if opposite_group not in self.matching_models:
                 logger.warning(f"No matching model for group {opposite_group}. Keeping original values.")
                 continue
@@ -544,7 +531,6 @@ class CounterfactualGenerator:
         """
         logger.info("Generating counterfactuals using generative approach...")
         
-        # Create copy of DataFrame for counterfactuals
         df_cf = df.copy()
         
         # Get features (excluding protected attribute)
@@ -605,10 +591,6 @@ class CounterfactualGenerator:
         
         # Calculate evaluation metrics
         metrics = self._evaluate_counterfactuals(X, X_cf, s, feature_names)
-        
-        # Generate visualizations if output directory provided
-        # if output_dir:
-        #     self._visualize_counterfactuals(X, X_cf, s, feature_names, output_dir)
         
         return X_cf, metrics
     
