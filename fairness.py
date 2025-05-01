@@ -1,5 +1,3 @@
-# visualizations/fairness.py - Fairness visualization functions
-
 import os
 import numpy as np
 import pandas as pd
@@ -10,7 +8,6 @@ import seaborn as sns
 from sklearn.metrics import roc_curve, auc
 from config import METRIC_DISPLAY_NAMES, PRIMARY_FAIRNESS_METRICS
 
-# Set style
 plt.style.use('seaborn-v0_8-whitegrid')
 sns.set_context("paper", font_scale=1.5)
 
@@ -90,8 +87,7 @@ def plot_probability_distributions(original_probs, fair_probs, protected_attr,
         plt.suptitle('Prediction Probability Distributions', fontsize=16)
     
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    
-    # Save or display
+
     if output_path:
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
@@ -113,7 +109,6 @@ def plot_roc_curves_by_group(y_true, y_score, protected_attr,
     Returns:
         Matplotlib figure
     """
-    # Setup figure
     fig, ax = plt.subplots(figsize=(10, 8))
     
     # Get indices for each group
@@ -163,8 +158,7 @@ def plot_roc_curves_by_group(y_true, y_score, protected_attr,
     ax.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    
-    # Save or display
+
     if output_path:
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
@@ -186,7 +180,6 @@ def plot_roc_curves_comparison(y_true, original_scores, fair_scores, protected_a
     Returns:
         Matplotlib figure
     """
-    # Setup figure
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
     
     # Get indices for each group
@@ -253,8 +246,7 @@ def plot_roc_curves_comparison(y_true, original_scores, fair_scores, protected_a
         plt.suptitle('ROC Curves Comparison', fontsize=16)
     
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    
-    # Save or display
+
     if output_path:
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
@@ -299,8 +291,7 @@ def plot_fairness_metrics_radar(baseline_metrics, fair_metrics, output_path=None
     
     # Add metric labels
     labels = [METRIC_DISPLAY_NAMES.get(m, m) for m in metrics]
-    
-    # Plot metrics
+
     ax.plot(angles, baseline_values, 'r-', linewidth=2, label='Baseline Model')
     ax.fill(angles, baseline_values, 'r', alpha=0.1)
     
@@ -309,8 +300,7 @@ def plot_fairness_metrics_radar(baseline_metrics, fair_metrics, output_path=None
     
     # Set y-limits
     ax.set_ylim(0, max(max(baseline_values), max(fair_values)) * 1.1)
-    
-    # Add labels
+
     plt.xticks(angles[:-1], labels)
     
     # Add title and legend
@@ -319,7 +309,6 @@ def plot_fairness_metrics_radar(baseline_metrics, fair_metrics, output_path=None
     
     plt.tight_layout()
     
-    # Save or display
     if output_path:
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
@@ -339,7 +328,6 @@ def plot_group_comparison_metrics(y_true, y_pred, protected_attr, output_path=No
     Returns:
         Matplotlib figure
     """
-    # Setup figure
     fig, ax = plt.subplots(figsize=(10, 6))
     
     # Get indices for each group
@@ -378,31 +366,25 @@ def plot_group_comparison_metrics(y_true, y_pred, protected_attr, output_path=No
         'F1': f1_score(y_true[group1_idx], y_pred[group1_idx], zero_division=0)
     })
     
-    # Convert to DataFrame
     metrics_df = pd.DataFrame(metrics)
-    
-    # Plot as grouped bar chart
+
     metric_names = ['Accuracy', 'Precision', 'Recall', 'F1']
     bar_width = 0.25
     index = np.arange(len(metric_names))
-    
-    # Position bars
     ax.bar(index - bar_width, metrics_df.iloc[0][metric_names], bar_width, 
            label='Overall', color='purple')
     ax.bar(index, metrics_df.iloc[1][metric_names], bar_width, 
            label='Group 0', color='blue')
     ax.bar(index + bar_width, metrics_df.iloc[2][metric_names], bar_width, 
            label='Group 1', color='red')
-    
-    # Add labels and formatting
+
     ax.set_xlabel('Metric')
     ax.set_ylabel('Score')
     ax.set_title('Performance Metrics by Group')
     ax.set_xticks(index)
     ax.set_xticklabels(metric_names)
     ax.legend()
-    
-    # Add value labels
+
     for i, metric in enumerate(metric_names):
         for j, group in enumerate(['Overall', 'Group 0', 'Group 1']):
             pos = i + (j-1) * bar_width
@@ -416,8 +398,7 @@ def plot_group_comparison_metrics(y_true, y_pred, protected_attr, output_path=No
             verticalalignment='bottom', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
     
     plt.tight_layout()
-    
-    # Save or display
+
     if output_path:
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
@@ -442,11 +423,9 @@ def plot_fairness_metrics_by_constraint(results_df, output_path=None):
     
     if not all(metric in results_df.columns for metric in required_metrics) or 'fairness_constraint' not in results_df.columns:
         raise ValueError("Results DataFrame must contain fairness metrics and fairness_constraint column")
-    
-    # Create figure with subplots for each metric
+
     fig, axes = plt.subplots(1, 3, figsize=(18, 6))
-    
-    # Define colors and labels for constraints
+
     colors = {
         'demographic_parity_difference': 'blue',
         'equal_opportunity_difference': 'red',
@@ -465,33 +444,27 @@ def plot_fairness_metrics_by_constraint(results_df, output_path=None):
         'Equal Opportunity Difference',
         'Equalized Odds Difference'
     ]
-    
-    # Plot boxplots for each metric
+
     for i, metric in enumerate(required_metrics):
         # Prepare data for boxplot
         constraints = results_df['fairness_constraint'].unique()
         data = [results_df[results_df['fairness_constraint'] == c][metric].abs() for c in constraints]
-        
-        # Create boxplot
+
         boxplots = axes[i].boxplot(data, labels=[constraint_labels.get(c, c) for c in constraints], 
                                 patch_artist=True, widths=0.6, showfliers=False)
         
-        # Color the boxes
         for j, box in enumerate(boxplots['boxes']):
             box.set(facecolor=colors.get(constraints[j], 'gray'), alpha=0.6)
-        
-        # Add labels and formatting
+
         axes[i].set_ylabel('Absolute Value')
         axes[i].set_title(metric_labels[i])
         axes[i].grid(True, alpha=0.3)
-        
-        # Rotate x-tick labels if needed
+  
         axes[i].set_xticklabels(axes[i].get_xticklabels(), rotation=45, ha='right')
     
     plt.suptitle('Effect of Fairness Constraints on Different Fairness Metrics', fontsize=16)
     plt.tight_layout(rect=[0, 0, 1, 0.95])
-    
-    # Save or display
+
     if output_path:
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
