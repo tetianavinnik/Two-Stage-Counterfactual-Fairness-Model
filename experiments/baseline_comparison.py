@@ -6,7 +6,6 @@ import os
 import re
 from typing import List, Dict, Tuple, Optional
 
-# Set style
 plt.style.use('seaborn-v0_8-whitegrid')
 sns.set_context("paper", font_scale=1.5)
 
@@ -45,7 +44,6 @@ def create_fairness_focused_plots(results_df: pd.DataFrame,
         output_dir: Directory to save output files
         file_prefix: Prefix for output files
     """
-    # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
     
     # Identify TSCFM models if not already done
@@ -58,18 +56,17 @@ def create_fairness_focused_plots(results_df: pd.DataFrame,
         if len(results_df) > 22:
             results_df.loc[:21, 'is_tscfm'] = False
     
-    # Add columns for absolute values of fairness metrics
+
     for metric in ['SP', 'EO', 'EOd']:
         results_df[f"{metric}_abs"] = results_df[metric].abs()
-    
-    # Define fairness metrics to use with their corresponding model pattern
+
     fairness_metrics = [
         ('SP_abs', 'Demographic Parity', 'DP'),
         ('EO_abs', 'Equal Opportunity', 'EO'),
         ('EOd_abs', 'Equalized Odds', 'EOd')
     ]
     
-    # Create one plot for each fairness metric
+
     for fair_metric, fair_name, model_pattern in fairness_metrics:
         # Get all TSCFM models (regardless of optimization type)
         tscfm_df = results_df[results_df['is_tscfm']].copy()
@@ -125,7 +122,6 @@ def create_fairness_focused_plots(results_df: pd.DataFrame,
         specific_model_mask = tscfm_df['optimization_type'] == model_pattern
         other_tscfm_mask = ~specific_model_mask
         
-        # Create plot with proper filtering for this metric
         plot_fairness_tradeoff(
             results_df=results_df,
             specific_models=tscfm_df[specific_model_mask],
@@ -165,18 +161,16 @@ def plot_fairness_tradeoff(results_df, specific_models, other_models,
     except ImportError:
         has_adjust_text = False
         print("Warning: adjustText library not found. Install with 'pip install adjustText' for better label positioning.")
-    
-    # Setup color mapping
+
     colors = {
         'Top Accuracy': 'blue',
         f'Top {fair_name}': 'green',
         f'Balanced {fair_metric.replace("_abs", "")}': 'red'
     }
     
-    # Create figure
+
     plt.figure(figsize=(14, 12))  # Increase figure size for better label spacing
-    
-    # Find baseline models
+
     baseline_mask = ~results_df['is_tscfm']
     
     # Plot baseline models
@@ -191,50 +185,40 @@ def plot_fairness_tradeoff(results_df, specific_models, other_models,
     # Plot all TSCFM models optimizing for this metric
     plt.scatter(specific_models[acc_metric], specific_models[fair_metric], 
                alpha=0.6, color='gray', s=60, label=f'Models optimizing for {fair_name}')
-    
-    # Store text objects for later adjustment
+
     texts = []
-    
-    # Plot top models with different colors
+
     legend_elements = []
     
     for objective, model_list in top_models.items():
-        # Get color for this objective
         color = colors.get(objective, 'purple')
         
         model_mask = results_df['Model'].isin(model_list)
         if not any(model_mask):
             print(f"Warning: No models found for {objective}")
             continue
-            
-        # Plot the models
+
         plt.scatter(results_df[model_mask][acc_metric], results_df[model_mask][fair_metric], 
                    alpha=1.0, color=color, s=100, marker='o')
-        
-        # Add this to legend
+ 
         legend_elements.append(plt.Line2D([0], [0], marker='o', color='w', 
                                         markerfacecolor=color, markersize=10,
                                         label=f'{objective} (Top 5)'))
-        
-        # Add labels for these models
+ 
         for _, row in results_df[model_mask].iterrows():
             t = plt.text(row[acc_metric], row[fair_metric], row['Model'],
                      fontsize=9, color=color, 
                      bbox=dict(facecolor='white', alpha=0.8, edgecolor=color, pad=2))
             texts.append(t)
-    
-    # Add a reference line for perfect fairness
+
     plt.axhline(y=0, color='black', linestyle='--', alpha=0.3)
-    
-    # Add labels and title
+
     plt.xlabel(f'Accuracy ({acc_metric})', fontsize=12)
     plt.ylabel(f'|{fair_metric.replace("_abs", "")}| - {fair_name} Difference', fontsize=12)
     plt.title(f'Accuracy vs. {fair_name} Trade-off', fontsize=14)
     
-    # Add grid for readability
     plt.grid(True, alpha=0.3)
-    
-    # Add model types to legend
+
     base_legend = [
         plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='gray', 
                   markersize=10, label=f'Models optimizing for {fair_name}'),
@@ -244,17 +228,14 @@ def plot_fairness_tradeoff(results_df, specific_models, other_models,
                   markersize=10, label='Baseline Models')
     ]
     
-    # Complete legend
     plt.legend(handles=base_legend + legend_elements, loc='upper right')
-    
-    # If adjustText is available, use it to prevent label overlaps
+
     if has_adjust_text and texts:
         adjust_text(texts, 
                    arrowprops=dict(arrowstyle='-', color='gray', lw=0.5),
                    expand_points=(1.5, 1.5),
                    force_points=(0.1, 0.2))
-    
-    # Save the plot
+
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.close()
@@ -273,7 +254,7 @@ def get_top_n_models(df: pd.DataFrame, objective_metrics: List[Tuple[str, bool]]
     Returns:
         List of model names for the top models
     """
-    # Make a copy to avoid modifying the original
+
     df_copy = df.copy()
     
     # Calculate a combined score for multi-metric objectives
@@ -343,15 +324,13 @@ def compute_balanced_score(df: pd.DataFrame, acc_metric: str, fair_metric: str) 
         df['fair_normalized'] = 1.0
     
     # Calculate harmonic mean (balanced score favors models that are good at both)
-    # Handle division by zero
     numerator = 2 * df['acc_normalized'] * df['fair_normalized']
     denominator = df['acc_normalized'] + df['fair_normalized']
     denominator = denominator.replace(0, float('nan'))  # Avoid division by zero
     
     df['balanced_score'] = numerator / denominator
     df['balanced_score'] = df['balanced_score'].fillna(0)  # Replace NaNs with 0
-    
-    # Return this as a tuple for the objective
+
     return [('balanced_score', True)]
 
 def create_trade_off_plot(df: pd.DataFrame, 
@@ -379,15 +358,13 @@ def create_trade_off_plot(df: pd.DataFrame,
     except ImportError:
         has_adjust_text = False
         print("Warning: adjustText library not found. Install with 'pip install adjustText' for better label positioning.")
-    
-    # Setup color mapping
+
     colors = {
         'Top Accuracy': 'blue',
         f'Top {fair_name}': 'green',
         f'Balanced {fair_metric.replace("_abs", "")}': 'red'
     }
-    
-    # Create figure
+ 
     plt.figure(figsize=(14, 12))  # Increase figure size for better label spacing
     
     # Check if 'is_tscfm' column exists, otherwise create it
@@ -426,8 +403,7 @@ def create_trade_off_plot(df: pd.DataFrame,
         # Plot the models
         plt.scatter(df[model_mask][acc_metric], df[model_mask][fair_metric], 
                    alpha=0.8, color=color, s=100, marker='o')
-        
-        # Add this to legend
+
         legend_elements.append(plt.Line2D([0], [0], marker='o', color='w', 
                                         markerfacecolor=color, markersize=10,
                                         label=f'{objective} (Top 5)'))
@@ -446,8 +422,7 @@ def create_trade_off_plot(df: pd.DataFrame,
     plt.xlabel(f'Accuracy ({acc_metric})', fontsize=12)
     plt.ylabel(f'|{fair_metric.replace("_abs", "")}| - {fair_name} Difference', fontsize=12)
     plt.title(f'Accuracy vs. {fair_name} Trade-off', fontsize=14)
-    
-    # Add grid for readability
+
     plt.grid(True, alpha=0.3)
     
     # Add TSCFM and baseline to legend elements
@@ -467,8 +442,7 @@ def create_trade_off_plot(df: pd.DataFrame,
                    arrowprops=dict(arrowstyle='-', color='gray', lw=0.5),
                    expand_points=(1.5, 1.5),
                    force_points=(0.1, 0.2))
-    
-    # Save the plot
+
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.close()
@@ -513,7 +487,7 @@ def place_non_overlapping_labels(annotations):
         renderer = plt.gcf().canvas.get_renderer()
         a['bbox'] = a['annotation'].get_bbox_patch().get_extents()
         
-    # Adjust positions to avoid overlaps - simple algorithm
+    # Adjust positions to avoid overlaps
     max_iterations = 100
     for _ in range(max_iterations):
         moved = False
@@ -628,7 +602,6 @@ def plot_tscfm_only_fairness_tradeoff(results_df, specific_models, other_models,
         f'Balanced {fair_metric.replace("_abs", "")}': 'red'
     }
     
-    # Create figure
     plt.figure(figsize=(14, 12))  # Increase figure size for better label spacing
     
     # Plot other TSCFM models (not optimizing for this metric)
@@ -664,12 +637,11 @@ def plot_tscfm_only_fairness_tradeoff(results_df, specific_models, other_models,
         plt.scatter(results_df[model_mask][acc_metric], results_df[model_mask][fair_metric], 
                    alpha=1.0, color=color, s=100, marker='o')
         
-        # Add this to legend
+
         legend_elements.append(plt.Line2D([0], [0], marker='o', color='w', 
                                         markerfacecolor=color, markersize=10,
                                         label=f'{objective} (Top 5)'))
-        
-        # Add labels for these models
+
         for _, row in results_df[model_mask].iterrows():
             t = plt.text(row[acc_metric], row[fair_metric], row['Model'],
                      fontsize=9, color=color, 
@@ -683,29 +655,24 @@ def plot_tscfm_only_fairness_tradeoff(results_df, specific_models, other_models,
     plt.xlabel(f'Accuracy ({acc_metric})', fontsize=12)
     plt.ylabel(f'|{fair_metric.replace("_abs", "")}| - {fair_name} Difference', fontsize=12)
     plt.title(f'Accuracy vs. {fair_name} Trade-off (TSCFM Models Only)', fontsize=14)
-    
-    # Add grid for readability
+
     plt.grid(True, alpha=0.3)
     
-    # Add model types to legend
     base_legend = [
         plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='gray', 
                   markersize=10, label=f'Models optimizing for {fair_name}'),
         plt.Line2D([0], [0], marker='o', color='w', markerfacecolor='lightgray', 
                   markersize=10, alpha=0.3, label='Other TSCFM Models')
     ]
-    
-    # Complete legend
+  
     plt.legend(handles=base_legend + legend_elements, loc='upper right')
-    
-    # If adjustText is available, use it to prevent label overlaps
+
     if has_adjust_text and texts:
         adjust_text(texts, 
                    arrowprops=dict(arrowstyle='-', color='gray', lw=0.5),
                    expand_points=(1.5, 1.5),
                    force_points=(0.1, 0.2))
-    
-    # Save the plot
+  
     plt.tight_layout()
     plt.savefig(output_path, dpi=300, bbox_inches='tight')
     plt.close()
@@ -836,10 +803,4 @@ def create_fairness_focused_plots_with_tscfm_only(results_df: pd.DataFrame,
             output_path=os.path.join(output_dir, f"{file_prefix}_{metric_base}_optimization_tscfm_only.png")
         )
 
-# Example usage
-if __name__ == "__main__":
-    # Load results
-    results_df = load_results(r"path_to_file")
-    # Create performance summary
-    create_performance_summary(results_df, "output_directory", "card")
 
