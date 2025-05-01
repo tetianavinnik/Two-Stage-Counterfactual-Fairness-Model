@@ -4,7 +4,7 @@ This repository contains the implementation of a Two-Stage Counterfactual Fairne
 
 ## Overview
 
-The TSCFM approach employs counterfactual reasoning to improve fairness across protected groups while preserving accuracy. It supports multiple counterfactual generation methods and fairness optimization targets.
+The TSCFM approach employs counterfactual reasoning to improve fairness across protected groups. It supports multiple counterfactual generation methods and fairness optimization targets.
 
 ## Repository Structure
 
