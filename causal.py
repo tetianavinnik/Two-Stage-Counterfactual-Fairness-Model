@@ -8,7 +8,6 @@ import seaborn as sns
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
-# Set style
 plt.style.use('seaborn-v0_8-whitegrid')
 sns.set_context("paper", font_scale=1.5)
 
@@ -24,10 +23,8 @@ def plot_causal_graph(causal_graph, output_path=None, figsize=(12, 10)):
     Returns:
         Matplotlib figure
     """
-    # Use the built-in visualization method of the causal graph
     fig = causal_graph.visualize(figsize=figsize)
     
-    # Save or display
     if output_path:
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
@@ -48,13 +45,11 @@ def plot_feature_distributions(X, s, feature_names, output_path=None, n_features
     Returns:
         Matplotlib figure
     """
-    # Create DataFrame
     if not isinstance(X, pd.DataFrame):
         X_df = pd.DataFrame(X, columns=feature_names)
     else:
         X_df = X
     
-    # Add protected attribute
     X_df['protected'] = s
     
     # Calculate correlation with protected attribute
@@ -68,11 +63,9 @@ def plot_feature_distributions(X, s, feature_names, output_path=None, n_features
     top_features = sorted(correlations, key=lambda x: x[1], reverse=True)[:n_features]
     top_feature_names = [feat[0] for feat in top_features]
     
-    # Calculate grid dimensions
     n_cols = 3
     n_rows = (n_features + n_cols - 1) // n_cols
     
-    # Create figure
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 4*n_rows))
     axes = axes.flatten()
     
@@ -89,7 +82,6 @@ def plot_feature_distributions(X, s, feature_names, output_path=None, n_features
                 normalize='columns'
             ) * 100  # Convert to percentage
             
-            # Plot stacked bar chart
             cross_tab.plot(kind='bar', stacked=False, ax=ax)
             ax.set_xlabel(feature)
             ax.set_ylabel('Percentage')
@@ -97,7 +89,6 @@ def plot_feature_distributions(X, s, feature_names, output_path=None, n_features
             ax.legend(['Group 0', 'Group 1'])
             
         else:  # Continuous
-            # Plot KDE for each group
             sns.kdeplot(x=X_df[X_df['protected'] == 0][feature], 
                      ax=ax, label='Group 0', color='blue')
             sns.kdeplot(x=X_df[X_df['protected'] == 1][feature], 
@@ -108,14 +99,12 @@ def plot_feature_distributions(X, s, feature_names, output_path=None, n_features
             ax.set_title(f"{feature} (corr: {top_features[i][1]:.3f})")
             ax.legend()
     
-    # Hide any unused axes
     for i in range(n_features, len(axes)):
         axes[i].set_visible(False)
     
     plt.suptitle('Feature Distributions by Protected Attribute', fontsize=16)
     plt.tight_layout(rect=[0, 0.03, 1, 0.97])
     
-    # Save or display
     if output_path:
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
@@ -144,15 +133,12 @@ def plot_counterfactual_distributions(X, X_cf, s, feature_names,
     # Get indices of top changed features
     top_indices = np.argsort(-feature_changes)[:n_features]
     
-    # Calculate grid dimensions
     n_cols = 3
     n_rows = (n_features + n_cols - 1) // n_cols
-    
-    # Create figure
+
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 4*n_rows))
     axes = axes.flatten()
-    
-    # Plot distributions for each feature
+
     for i, feat_idx in enumerate(top_indices):
         if feat_idx < len(feature_names):
             ax = axes[i]
@@ -162,17 +148,14 @@ def plot_counterfactual_distributions(X, X_cf, s, feature_names,
             orig_values = X[:, feat_idx]
             cf_values = X_cf[:, feat_idx]
             
-            # Split by protected attribute for coloring
             group0_mask = (s == 0)
             group1_mask = (s == 1)
             
-            # Plot original values
             sns.kdeplot(x=orig_values[group0_mask], ax=ax, 
                      label='G0 Original', color='blue', alpha=0.5)
             sns.kdeplot(x=orig_values[group1_mask], ax=ax, 
                      label='G1 Original', color='red', alpha=0.5)
             
-            # Plot counterfactual values
             sns.kdeplot(x=cf_values[group0_mask], ax=ax, 
                      label='G0 Counterfactual', color='blue', 
                      linestyle='--')
@@ -184,30 +167,25 @@ def plot_counterfactual_distributions(X, X_cf, s, feature_names,
             mean_diff_g0 = np.mean(cf_values[group0_mask] - orig_values[group0_mask])
             mean_diff_g1 = np.mean(cf_values[group1_mask] - orig_values[group1_mask])
             
-            # Add title and formatting
             ax.set_xlabel(feature_name)
             ax.set_ylabel('Density')
             ax.set_title(f"{feature_name}\nΔG0={mean_diff_g0:.3f}, ΔG1={mean_diff_g1:.3f}")
             
-            # Simplify legend for readability
             if i == 0:
                 ax.legend(fontsize=8)
             else:
                 ax.get_legend().remove()
     
-    # Hide any unused axes
     for i in range(n_features, len(axes)):
         axes[i].set_visible(False)
     
     plt.suptitle('Original vs. Counterfactual Feature Distributions', fontsize=16)
     plt.tight_layout(rect=[0, 0.03, 1, 0.97])
-    
-    # Add overall legend for all plots
+
     fig.legend(['Group 0 Original', 'Group 1 Original', 
                'Group 0 Counterfactual', 'Group 1 Counterfactual'], 
                loc='lower center', ncol=4, bbox_to_anchor=(0.5, 0.01))
     
-    # Save or display
     if output_path:
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
@@ -231,8 +209,7 @@ def plot_embedding_space(X, X_cf, s, y=None, method='pca', output_path=None):
     """
     # Combine original and counterfactual data
     X_combined = np.vstack([X, X_cf])
-    
-    # Add labels for original vs. counterfactual and protected attribute
+
     data_type = np.array(['Original']*len(X) + ['Counterfactual']*len(X_cf))
     protected_attr = np.concatenate([s, s])
     
@@ -247,15 +224,12 @@ def plot_embedding_space(X, X_cf, s, y=None, method='pca', output_path=None):
         title = "t-SNE Embedding: Original vs. Counterfactual Data"
     else:
         raise ValueError(f"Unknown method: {method}")
-    
-    # Setup figure
+
     fig, ax = plt.subplots(figsize=(12, 10))
-    
-    # Define markers and colors
+
     markers = {'Original': 'o', 'Counterfactual': '^'}
     colors = {0: 'blue', 1: 'red'}
     
-    # Plot points
     for data_t in ['Original', 'Counterfactual']:
         for group in [0, 1]:
             mask = (data_type == data_t) & (protected_attr == group)
@@ -270,16 +244,13 @@ def plot_embedding_space(X, X_cf, s, y=None, method='pca', output_path=None):
                 label=f"Group {group} ({data_t})"
             )
     
-    # Add labels and formatting
     ax.set_xlabel(f"{method.upper()} Dimension 1")
     ax.set_ylabel(f"{method.upper()} Dimension 2")
     ax.set_title(title)
     ax.legend()
-    
-    # Add a grid
+
     ax.grid(True, alpha=0.3)
     
-    # Add annotation explaining the visualization
     annotation = (
         "Each point represents a sample:\n"
         "• Circles: Original data\n"
@@ -290,8 +261,7 @@ def plot_embedding_space(X, X_cf, s, y=None, method='pca', output_path=None):
             verticalalignment='bottom', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
     
     plt.tight_layout()
-    
-    # Save or display
+
     if output_path:
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
@@ -320,31 +290,25 @@ def plot_feature_importance(feature_importances, feature_names,
     
     # Select top N features
     top_features = sorted_pairs[:min(top_n, len(sorted_pairs))]
-    
-    # Create lists for plotting
+
     names = [pair[0] for pair in top_features]
     values = [pair[1] for pair in top_features]
-    
-    # Create figure
+
     fig, ax = plt.subplots(figsize=(10, 8))
     
-    # Plot horizontal bar chart
     ax.barh(np.arange(len(names)), values, color='teal')
     ax.set_yticks(np.arange(len(names)))
     ax.set_yticklabels(names)
     ax.invert_yaxis()  # Display top features at the top
-    
-    # Add labels and formatting
+
     ax.set_xlabel('Importance')
     ax.set_title(f'Top {len(names)} Feature Importance')
-    
-    # Add value labels
+
     for i, v in enumerate(values):
         ax.text(v + 0.002, i, f'{v:.4f}', va='center')
     
     plt.tight_layout()
-    
-    # Save or display
+
     if output_path:
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
@@ -364,10 +328,8 @@ def plot_feature_categories(feature_categories, feature_names,
     Returns:
         Matplotlib figure
     """
-    # Setup figure
     fig, ax = plt.subplots(figsize=(12, 8))
     
-    # Define category colors
     category_colors = {
         'direct': 'gold',
         'proxy': 'lightcoral',
@@ -377,34 +339,28 @@ def plot_feature_categories(feature_categories, feature_names,
     
     # Count features in each category
     category_counts = {cat: len(indices) for cat, indices in feature_categories.items()}
-    
-    # Create bar chart
+
     categories = list(category_counts.keys())
     counts = [category_counts[cat] for cat in categories]
-    
-    # Plot bars
+
     bars = ax.bar(categories, counts, color=[category_colors[cat] for cat in categories])
-    
-    # Add labels and formatting
+
     ax.set_xlabel('Feature Category')
     ax.set_ylabel('Number of Features')
     ax.set_title('Feature Categorization')
-    
-    # Add value labels
+
     for bar in bars:
         height = bar.get_height()
         ax.text(bar.get_x() + bar.get_width()/2., height + 0.5, 
                 f'{int(height)}', ha='center', va='bottom')
-    
-    # Add category descriptions
+
     descriptions = {
         'direct': 'Directly affected by\nprotected attribute',
         'proxy': 'Can serve as proxies for\nprotected attribute',
         'mediator': 'Mediate between protected\nattribute and outcome',
         'neutral': 'Not related to\nprotected attribute'
     }
-    
-    # Add annotations above each bar
+
     for i, cat in enumerate(categories):
         ax.text(i, counts[i] + 1, descriptions[cat], ha='center', va='bottom', 
                 fontsize=9, color='dimgray')
@@ -413,10 +369,9 @@ def plot_feature_categories(feature_categories, feature_names,
     if sum(counts) < 50:  # Only if total number of features is manageable
         feature_lists = {}
         for cat, indices in feature_categories.items():
-            if indices:  # If not empty
+            if indices:
                 feature_lists[cat] = [feature_names[i] for i in indices]
-        
-        # Add text box with feature lists
+
         text = ""
         for cat in categories:
             if cat in feature_lists:
@@ -431,8 +386,7 @@ def plot_feature_categories(feature_categories, feature_names,
                        bbox={"facecolor":"white", "alpha":0.8, "pad":5})
     
     plt.tight_layout(rect=[0, 0.1 if sum(counts) < 50 else 0, 1, 1])
-    
-    # Save or display
+
     if output_path:
         plt.savefig(output_path, dpi=300, bbox_inches='tight')
         plt.close()
