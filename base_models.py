@@ -48,7 +48,6 @@ class BaseModelWrapper:
         Returns:
             A scikit-learn estimator
         """
-        # Ensure random state is included in hyperparams
         hyperparams = self.hyperparams.copy()
         hyperparams['random_state'] = self.random_state
         
@@ -193,10 +192,7 @@ class BaseModelWrapper:
         Args:
             filepath: Path to save the model
         """
-        # Create directory if it doesn't exist
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        
-        # Save model
         joblib.dump(self, filepath)
     
     @classmethod
@@ -262,34 +258,3 @@ def get_default_param_grid(model_type: str) -> Dict[str, List[Any]]:
         raise ValueError(f"No default parameter grid for model type: {model_type}")
     
     return DEFAULT_PARAM_GRIDS[model_type]
-
-
-# Example usage
-if __name__ == "__main__":
-    # Generate some example data
-    np.random.seed(42)
-    X = np.random.rand(1000, 10)
-    y = (X[:, 0] + X[:, 1] > 1).astype(int)
-    
-    # Create and fit a model
-    model = BaseModelWrapper("random_forest", {"n_estimators": 100})
-    model.fit(X, y)
-    
-    # Make predictions
-    y_pred = model.predict(X)
-    y_prob = model.predict_proba(X)
-    
-    # Print feature importances
-    print("Feature importances:")
-    print(model.get_feature_importances())
-    
-    # Optimize hyperparameters
-    print("\nOptimizing hyperparameters...")
-    param_grid = {
-        "n_estimators": [50, 100],
-        "max_depth": [None, 10],
-        "min_samples_split": [2, 5]
-    }
-    best_params, best_score = model.optimize_hyperparams(X, y, param_grid, cv=3)
-    print(f"Best parameters: {best_params}")
-    print(f"Best score: {best_score:.4f}")
