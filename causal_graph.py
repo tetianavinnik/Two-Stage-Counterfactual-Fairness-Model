@@ -298,7 +298,7 @@ class CausalGraph:
                 elif partial_corr_j_s > partial_corr_i_s + partial_correlation_threshold:
                     self.graph.add_edge(feature_j, feature_i)
                 else:
-                    # If no clear direction, use heuristic (e.g., lower index is earlier in causal order)
+                    # If no clear direction, use heuristic (lower index is earlier in causal order)
                     self.graph.add_edge(feature_i, feature_j)
         
         # If outcome is provided, ensure it has no outgoing edges
@@ -307,7 +307,7 @@ class CausalGraph:
             for edge in list(self.graph.out_edges(outcome)):
                 self.graph.remove_edge(edge[0], edge[1])
         
-        # Make sure the graph is acyclic using cycle removal
+        # Make sure the graph is acyclic
         self._remove_cycles_with_edge_weights(X)
         
         # Categorize features based on their relationship to protected attribute
@@ -368,7 +368,6 @@ class CausalGraph:
             for feature in neutral_features:
                 self.graph.add_edge(feature, outcome)
         
-        # Store feature categories
         self.direct_features = set(direct_features)
         self.proxy_features = set(proxy_features)
         self.mediator_features = set(mediator_features)
@@ -378,7 +377,6 @@ class CausalGraph:
         """
         Categorize features based on their relationship to the protected attribute.
         """
-        # Reset categories
         self.direct_features = set()
         self.proxy_features = set()
         self.mediator_features = set()
@@ -435,7 +433,7 @@ class CausalGraph:
         
         structural_equations = {}
         
-        # Iterate through nodes in topological order (parents before children)
+        # Iterate through nodes in topological order
         for node in nx.topological_sort(self.graph):
             parents = list(self.graph.predecessors(node))
             
@@ -461,22 +459,15 @@ class CausalGraph:
             # Select model type
             model_type = models.get(node, 'linear')
             
-            # Fit model based on data type and specified model type
-            if y.nunique() <= 5:  # Categorical/binary feature
-                if model_type == 'random_forest':
-                    model = RandomForestClassifier(n_estimators=100, random_state=42)
-                else:
-                    model = LogisticRegression(random_state=42)
-            else:  # Continuous feature
-                if model_type == 'random_forest':
-                    model = RandomForestRegressor(n_estimators=100, random_state=42)
-                else:
-                    model = LinearRegression()
+
+            if model_type == 'random_forest':
+                model = RandomForestRegressor(n_estimators=100, random_state=42)
+            else:
+                model = LinearRegression()
             
             # Fit model
             model.fit(X_parents, y)
             
-            # Store model
             structural_equations[node] = model
         
         return structural_equations
@@ -524,53 +515,6 @@ class CausalGraph:
         
         return causal_graph
 
-
-# Example usage
-if __name__ == "__main__":
-    import pandas as pd
-    import numpy as np
-    
-    # Generate synthetic data
-    np.random.seed(42)
-    n_samples = 1000
-    
-    # Gender (protected attribute)
-    gender = np.random.binomial(1, 0.5, n_samples)  # 0=male, 1=female
-    
-    # Direct effects of gender
-    age = 40 + gender * (-5) + np.random.normal(0, 10, n_samples)  # Women slightly younger on average
-    education = 12 + gender * (1) + np.random.normal(0, 3, n_samples)  # Women slightly more educated
-    
-    # Mediator variables (affected by gender and affecting income)
-    occupation = 5 + 0.2 * education - 1 * gender + np.random.normal(0, 2, n_samples)  # Gender affects occupation
-    experience = age - education - 5 + np.random.normal(0, 3, n_samples)  # Function of age and education
-    
-    # Neutral variables (not affected by gender)
-    region = np.random.randint(0, 4, n_samples)  # Region code (0-3)
-    
-    # Outcome: income (affected by education, occupation, experience, and region)
-    income = (
-        30000 + 5000 * education + 3000 * occupation + 1000 * experience + 
-        2000 * region - 10000 * gender +  # Gender has direct effect on income (gender pay gap)
-        np.random.normal(0, 10000, n_samples)
-    )
-    
-    # Create DataFrame
-    df = pd.DataFrame({
-        'gender': gender,
-        'age': age,
-        'education': education,
-        'occupation': occupation,
-        'experience': experience,
-        'region': region,
-        'income': income
-    })
-    
-    # Create and visualize causal graph
-    causal_graph = CausalGraph()
-    causal_graph.discover_from_data(
-        df, s_idx=0, correlation_threshold=0.05, outcome_idx=6
-    )
     
     # Visualize
     causal_graph.visualize()
