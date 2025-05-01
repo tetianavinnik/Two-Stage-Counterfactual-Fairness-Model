@@ -188,18 +188,6 @@ BASE_TSCFM_CONFIG = {
 #     "random_state": RANDOM_SEED
 # }
 
-# BASE_TSCFM_CONFIG = {
-#     "base_model_type": "neural_network",  # Change from "random_forest" to "neural_network"
-#     "base_model_params": {
-#         "hidden_layer_sizes": (64, 32),
-#         "activation": "relu",
-#         "solver": "adam",
-#         "alpha": 0.0001,
-#         "max_iter": 100
-#     },  # Replace with NN parameters
-#     "random_state": RANDOM_SEED
-# }
-
 def get_experiment_grid():
     """Generate a grid of experiment configurations."""
     experiment_grid = []
