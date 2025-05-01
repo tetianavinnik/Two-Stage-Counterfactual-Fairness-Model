@@ -1,5 +1,4 @@
-# run_tscfm_experiments.py - Main entry point for TSCFM experiments and analysis
-
+# Main entry point for TSCFM experiments and analysis
 import os
 import argparse
 import logging
@@ -10,7 +9,6 @@ import matplotlib
 matplotlib.use('Agg')
 import sys
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -88,8 +86,7 @@ def parse_args():
 def run_experiments(args):
     """Run TSCFM experiments using configuration that matches main.py behavior."""
     logger.info("Starting TSCFM experiments")
-    
-    # Prepare output directory
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     if args.output_dir:
         output_dir = args.output_dir
@@ -121,8 +118,7 @@ def run_experiments(args):
     # Add parallel flag if specified
     if args.parallel:
         cmd.extend(["--parallel", "--n_jobs", str(args.n_jobs)])
-    
-    # Run the command
+
     logger.info(f"Running command: {' '.join(cmd)}")
     
     try:
@@ -136,8 +132,7 @@ def run_experiments(args):
 
 def patch_run_single_experiment():
     """
-    Patches run_single_experiment function in run_experiments.py to match main.py behavior.
-    This uses monkey patching to modify the function at runtime.
+    Patches run_single_experiment function in run_experiments.py
     """
     import run_experiments
     import types
@@ -173,8 +168,7 @@ def analyze_results(args, results_dir=None):
     # Add LaTeX flag if specified
     if args.latex:
         cmd.append("--generate_latex")
-    
-    # Run the command
+
     logger.info(f"Running command: {' '.join(cmd)}")
     try:
         subprocess.run(cmd, check=True)
@@ -212,7 +206,6 @@ def main():
             torch.backends.cudnn.deterministic = True
             torch.backends.cudnn.benchmark = False
 
-    # Use a fixed seed for reproducibility
     GLOBAL_SEED = 42
     set_all_seeds(GLOBAL_SEED)
 
