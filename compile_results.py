@@ -140,8 +140,7 @@ def compile_experiment_results(experiments_dir, output_dir, dataset_filter=None)
     
     # Convert to DataFrame
     df = pd.DataFrame(compiled_results)
-    
-    # Save compiled results
+
     csv_path = os.path.join(output_dir, "compiled_results.csv")
     df.to_csv(csv_path, index=False)
     logger.info(f"Saved compiled results to {csv_path}")
@@ -269,7 +268,6 @@ def generate_combined_visualizations(results_df, output_dir, dataset=None):
                     tscfm_row = pd.DataFrame([{'Model': model_name} | benchmark_format])
                     comparison_df = pd.concat([comparison_df, tscfm_row], ignore_index=True)
                 
-                # Save comparison as CSV
                 comparison_path = os.path.join(performance_dir, f"{dataset}_baseline_comparison.csv")
                 comparison_df.to_csv(comparison_path, index=False)
                 
@@ -307,27 +305,21 @@ def generate_combined_visualizations(results_df, output_dir, dataset=None):
                 }
                 best_models.append(best_model_data)
         
-        # Create DataFrame
         best_df = pd.DataFrame(best_models)
-        
-        # Save summary
+
         summary_path = os.path.join(output_dir, "best_models_summary.csv")
         best_df.to_csv(summary_path, index=False)
-        
-        # Create multi-dataset comparison plot
+
         if len(best_df) > 1:
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
-            
-            # Performance plot
+
             ax1.bar(best_df['Dataset'], best_df['Accuracy'], color='teal')
             ax1.set_ylabel('Accuracy')
             ax1.set_title('Accuracy by Dataset')
-            
-            # Add value labels
+  
             for i, v in enumerate(best_df['Accuracy']):
                 ax1.text(i, v + 0.01, f'{v:.3f}', ha='center')
-            
-            # Fairness improvement plot
+  
             x = np.arange(len(best_df))
             width = 0.35
             
@@ -341,8 +333,7 @@ def generate_combined_visualizations(results_df, output_dir, dataset=None):
             ax2.set_xticks(x)
             ax2.set_xticklabels(best_df['Dataset'])
             ax2.legend()
-            
-            # Add value labels
+  
             for i, v in enumerate(best_df['DP Improvement']):
                 ax2.text(i - width/2, v + 1, f'{v:.1f}%', ha='center')
             
@@ -352,7 +343,6 @@ def generate_combined_visualizations(results_df, output_dir, dataset=None):
             plt.suptitle('Cross-Dataset Performance Summary', fontsize=16)
             plt.tight_layout(rect=[0, 0, 1, 0.95])
             
-            # Save plot
             multi_path = os.path.join(viz_dir, "cross_dataset_comparison.png")
             plt.savefig(multi_path, dpi=300, bbox_inches='tight')
             plt.close()
@@ -365,7 +355,7 @@ def generate_combined_visualizations(results_df, output_dir, dataset=None):
 
 def generate_latex_tables(results_df, baseline_results, output_dir):
     """
-    Generate LaTeX tables for thesis
+    Generate LaTeX tables
     
     Args:
         results_df: DataFrame with compiled results
@@ -374,11 +364,9 @@ def generate_latex_tables(results_df, baseline_results, output_dir):
     """
     logger.info("Generating LaTeX tables")
     
-    # Create LaTeX directory
     latex_dir = os.path.join(output_dir, "latex")
     os.makedirs(latex_dir, exist_ok=True)
 
-    # Ensure model names are present
     if 'model_name' not in results_df.columns:
         from utils import make_model_name
         results_df['model_name'] = results_df.apply(lambda row: make_model_name({
@@ -387,8 +375,7 @@ def generate_latex_tables(results_df, baseline_results, output_dir):
             'adjustment_strength': row['adjustment_strength'],
             'amplification_factor': row['amplification_factor']
         }), axis=1)
-    
-    # Process each dataset
+
     for dataset in results_df['dataset'].unique():
         # Filter results for this dataset
         ds_results = results_df[results_df['dataset'] == dataset]
@@ -416,16 +403,14 @@ def generate_latex_tables(results_df, baseline_results, output_dir):
             # Add TSCFM row
             tscfm_row = pd.DataFrame([{'Model': 'TSCFM'} | benchmark_format])
             comparison = pd.concat([baseline_df, tscfm_row], ignore_index=True)
-            
-            # Create LaTeX table
+
             latex_table = comparison.to_latex(
                 index=False,
                 float_format="%.4f",
                 caption=f"Performance comparison on {dataset.capitalize()} dataset",
                 label=f"tab:results_{dataset}"
             )
-            
-            # Save LaTeX table
+
             latex_path = os.path.join(latex_dir, f"{dataset}_results.tex")
             with open(latex_path, 'w') as f:
                 f.write(latex_table)
@@ -451,7 +436,6 @@ def generate_latex_tables(results_df, baseline_results, output_dir):
             label="tab:method_comparison"
         )
         
-        # Save LaTeX table
         method_path = os.path.join(latex_dir, "method_comparison.tex")
         with open(method_path, 'w') as f:
             f.write(method_latex)
@@ -470,7 +454,6 @@ def generate_fairness_comparison_tables(results_df, output_dir):
         results_df: DataFrame with experiment results
         output_dir: Directory to save tables
     """
-    # Create LaTeX directory if it doesn't exist
     latex_dir = os.path.join(output_dir, "latex")
     os.makedirs(latex_dir, exist_ok=True)
     
@@ -481,7 +464,6 @@ def generate_fairness_comparison_tables(results_df, output_dir):
          'improvement_equal_opportunity_difference']
     ].mean().reset_index()
     
-    # Rename columns for LaTeX
     overall_df.columns = [
         'Fairness Constraint', 
         'Accuracy', 
@@ -489,12 +471,10 @@ def generate_fairness_comparison_tables(results_df, output_dir):
         'EO Improvement (\%)'
     ]
     
-    # Format the constraint names
     overall_df['Fairness Constraint'] = overall_df['Fairness Constraint'].apply(
         lambda x: x.replace('_difference', '').replace('_', ' ').title()
     )
-    
-    # Generate LaTeX table
+
     overall_latex = overall_df.to_latex(
         index=False,
         float_format="%.3f",
@@ -502,7 +482,6 @@ def generate_fairness_comparison_tables(results_df, output_dir):
         label="tab:fairness_constraints_comparison"
     )
     
-    # Save overall table
     with open(os.path.join(latex_dir, "fairness_constraints_comparison.tex"), 'w') as f:
         f.write(overall_latex)
     
@@ -517,8 +496,7 @@ def generate_fairness_comparison_tables(results_df, output_dir):
              'improvement_equal_opportunity_difference', 
              'improvement_equalized_odds_difference']
         ].mean().reset_index()
-        
-        # Rename columns
+
         dataset_summary.columns = [
             'Fairness Constraint', 
             'Accuracy', 
@@ -526,21 +504,18 @@ def generate_fairness_comparison_tables(results_df, output_dir):
             'EO Improvement (\%)',
             'EOd Improvement (\%)'
         ]
-        
-        # Format constraint names
+
         dataset_summary['Fairness Constraint'] = dataset_summary['Fairness Constraint'].apply(
             lambda x: x.replace('_difference', '').replace('_', ' ').title()
         )
-        
-        # Generate LaTeX table
+
         dataset_latex = dataset_summary.to_latex(
             index=False,
             float_format="%.3f",
             caption=f"Fairness Constraints Comparison on {dataset.capitalize()} Dataset",
             label=f"tab:fairness_constraints_{dataset}"
         )
-        
-        # Save dataset table
+
         with open(os.path.join(latex_dir, f"{dataset}_fairness_comparison.tex"), 'w') as f:
             f.write(dataset_latex)
     
@@ -556,8 +531,7 @@ def generate_fairness_comparison_tables(results_df, output_dir):
              'improvement_demographic_parity_difference', 
              'improvement_equal_opportunity_difference']
         ].mean().reset_index()
-        
-        # Rename columns
+
         detailed_df.columns = [
             'Fairness Constraint',
             'Counterfactual Method',
@@ -567,24 +541,20 @@ def generate_fairness_comparison_tables(results_df, output_dir):
             'DP Improvement (\%)',
             'EO Improvement (\%)'
         ]
-        
-        # Format names
+
         detailed_df['Fairness Constraint'] = detailed_df['Fairness Constraint'].apply(
             lambda x: x.replace('_difference', '').replace('_', ' ').title()
         )
         detailed_df['Counterfactual Method'] = detailed_df['Counterfactual Method'].apply(
             lambda x: x.title().replace('_', ' ')
         )
-        
-        # Generate LaTeX table
+
         detailed_latex = detailed_df.to_latex(
             index=False,
             float_format="%.3f",
             caption=f"Detailed Fairness Analysis on {dataset.capitalize()} Dataset",
             label=f"tab:detailed_fairness_{dataset}"
         )
-        
-        # Save detailed table
         with open(os.path.join(latex_dir, f"{dataset}_detailed_fairness.tex"), 'w') as f:
             f.write(detailed_latex)
     
@@ -611,11 +581,9 @@ def generate_fairness_comparison_tables(results_df, output_dir):
             'Best Accuracy': best_acc['fair_performance_accuracy'],
             'Acc Config DP Improvement': best_acc['improvement_demographic_parity_difference']
         })
-    
-    # Convert to DataFrame
+
     best_df = pd.DataFrame(best_results)
-    
-    # Generate LaTeX table
+
     best_latex = best_df.to_latex(
         index=False,
         float_format="%.3f",
@@ -623,7 +591,6 @@ def generate_fairness_comparison_tables(results_df, output_dir):
         label="tab:best_configurations"
     )
     
-    # Save best results table
     with open(os.path.join(latex_dir, "best_configurations.tex"), 'w') as f:
         f.write(best_latex)
         
@@ -712,8 +679,7 @@ def main():
         output_dir = os.path.join(results_dir, "compiled")
     else:
         output_dir = args.output_dir
-    
-    # Create output directory
+
     os.makedirs(output_dir, exist_ok=True)
     
     # Compile results
@@ -729,7 +695,7 @@ def main():
     # Generate fairness comparison visualizations
     generate_fairness_visualizations(results_df, output_dir)
     
-    # Generate LaTeX tables if requested
+    # Generate LaTeX tables
     if args.generate_latex:
         from baseline_results import BENCHMARK_RESULTS
         generate_latex_tables(results_df, BENCHMARK_RESULTS, output_dir)
