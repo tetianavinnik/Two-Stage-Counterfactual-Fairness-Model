@@ -17,7 +17,6 @@ def load_card_credit(filepath, mode='onehot'):
     
     # Handle different column naming conventions
     if set(expected_columns).issubset(set(df.columns)):
-        # Use proper column names if available
         pass
     elif 'Y' in df.columns:  # Check if columns are named X1, X2, ..., Y
         # Map from X1, X2, etc. to meaningful names
