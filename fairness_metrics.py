@@ -1,5 +1,5 @@
 """
-Comprehensive implementation of fairness metrics for evaluating the Two-Stage
+Fairness metrics for evaluating the Two-Stage
 Counterfactual Fairness Model (TSCFM).
 """
 
@@ -59,8 +59,7 @@ def disparate_impact_ratio(y_pred: np.ndarray, s: np.ndarray) -> float:
     # Calculate positive prediction rate for each group
     positive_rate_0 = y_pred[s == 0].mean()
     positive_rate_1 = y_pred[s == 1].mean()
-    
-    # Avoid division by zero
+
     if positive_rate_0 == 0:
         return float('inf')
     
@@ -479,25 +478,3 @@ def print_fairness_report(report: Dict[str, Dict[str, float]]) -> None:
         print(row)
     
     print("="*80)
-
-
-# Example usage
-if __name__ == "__main__":
-    # Generate some example data
-    np.random.seed(42)
-    y_true = np.random.randint(0, 2, 1000)
-    y_score = y_true * 0.8 + np.random.random(1000) * 0.2
-    y_pred = (y_score > 0.5).astype(int)
-    s = np.random.randint(0, 2, 1000)
-    
-    # Add bias for demonstration
-    y_score[s == 1] = y_score[s == 1] * 0.9
-    y_pred = (y_score > 0.5).astype(int)
-    
-    # Generate and print report
-    report = fairness_report(y_true, y_pred, y_score, s, ['Males', 'Females'])
-    print_fairness_report(report)
-    
-    # Plot ROC curves
-    plot_roc_curves(y_true, y_score, s, ['Males', 'Females'], 'Example ROC Curves')
-    plt.show()
